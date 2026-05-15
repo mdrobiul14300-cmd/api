@@ -6,9 +6,9 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
 # 🔐 গিটহাব সিক্রেটস থেকে ডাটা লোড করা হচ্ছে (লোকালি না থাকলে ফলব্যাক ভ্যালু ব্যবহার করবে)
-AES_KEY = os.environ.get("MY_AES_KEY", "M8mkKlNL75K4nl15").encode('utf-8')
-AES_IV = os.environ.get("MY_AES_IV", "kN7m5Kl1pN5nk4xK").encode('utf-8')
-BASE_URL = os.environ.get("MY_BASE_URL", "http://sohahmczab1.shop/")
+AES_KEY = os.environ.get("MY_AES_KEY", "").encode('utf-8')
+AES_IV = os.environ.get("MY_AES_IV", "").encode('utf-8')
+BASE_URL = os.environ.get("MY_BASE_URL", "")
 TARGET_URL = f"{BASE_URL}events.txt"
 
 # 🔄 কাস্টম ক্যারেক্টার ম্যাপিং সেটআপ (yb.a.b)
