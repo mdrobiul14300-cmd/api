@@ -5,13 +5,14 @@ import requests
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
-# 🔐 গিটহাব সিক্রেটস থেকে ডাটা লোড করা হচ্ছে (লোকালি না থাকলে ফলব্যাক ভ্যালু ব্যবহার করবে)
 AES_KEY = os.environ.get("MY_AES_KEY", "").encode('utf-8')
 AES_IV = os.environ.get("MY_AES_IV", "").encode('utf-8')
 BASE_URL = os.environ.get("MY_BASE_URL", "")
 TARGET_URL = f"{BASE_URL}events.txt"
 
-# 🔄 কাস্টম ক্যারেক্টার ম্যাপিং সেটআপ (yb.a.b)
+RECEIVER_URL = os.environ.get("MY_RECEIVER_URL", "") # e.g., https://yourdomain.com/receiver.php
+HOSTING_AUTH_TOKEN = os.environ.get("MY_HOSTING_TOKEN", "") # e.g., MySuperSecretToken12345!
+
 f13875a = ['a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'g', 'G', 'h', 'H', 'i', 'I', 'j', 'J', 'k', 'K', 'l', 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z']
 f13876b = ['f', 'F', 'g', 'G', 'j', 'J', 'k', 'K', 'a', 'A', 'p', 'P', 'b', 'B', 'm', 'M', 'o', 'O', 'z', 'Z', 'e', 'E', 'n', 'N', 'c', 'C', 'd', 'D', 'r', 'R', 'q', 'Q', 't', 'T', 'v', 'V', 'u', 'U', 'x', 'X', 'h', 'H', 'i', 'I', 'w', 'W', 'y', 'Y', 'l', 'L', 's', 'S']
 
@@ -98,7 +99,7 @@ def run():
             
             if final_events:
                 total_events = len(final_events)
-                print(f"✅ মোট {total_events} টি ম্যাচ/ইভেন্ট পাওয়া গেছে।")
+                print(f"✅ মোট {total_events} টি ম্যাচ/ইভেন্ট পাওয়া গেছে।")
                 
                 for index, event in enumerate(final_events, 1):
                     link_file_path = event.get("links")
@@ -112,10 +113,23 @@ def run():
                     if "links" in event:
                         del event["links"]
                 
-                # ফাইলটি সেভ করা হচ্ছে
-                with open("decrypted_events.json", "w", encoding="utf-8") as f:
-                    json.dump(final_events, f, indent=4, ensure_ascii=False)
-                print("\n💾 ডাটা সফলভাবে 'decrypted_events.json' ফাইলে সেভ হয়েছে।")
+                # 🔄 হোস্টিং সার্ভারে সরাসরি JSON ডেটা পোস্ট করা হচ্ছে (কোনো লোকাল ফাইল সেভ হবে না)
+                if RECEIVER_URL and HOSTING_AUTH_TOKEN:
+                    print("\n🌐 হোস্টিং সার্ভারে ফাইনাল ডাটা পাঠানো হচ্ছে...")
+                    post_headers = {
+                        "Content-Type": "application/json",
+                        "X-Auth-Token": HOSTING_AUTH_TOKEN
+                    }
+                    try:
+                        upload_res = requests.post(RECEIVER_URL, json=final_events, headers=post_headers, timeout=15)
+                        if upload_res.status_code == 200:
+                            print("🚀 সফলভাবে হোস্টিং সার্ভারে ডেটা আপডেট হয়েছে!")
+                        else:
+                            print(f"❌ সার্ভার আপলোড ফেল করেছে। স্ট্যাটাস কোড: {upload_res.status_code}")
+                    except Exception as upload_error:
+                        print(f"❌ সার্ভারে ডেটা পাঠানোর সময় এরর: {upload_error}")
+                else:
+                    print("\n❌ এরর: হোস্টিং ইউআরএল অথবা টোকেন সেট করা নেই! ডেটা কোথাও পাঠানো যায়নি।")
                 
     except Exception as e:
         print(f"❌ রানটাইম এরর: {e}")
