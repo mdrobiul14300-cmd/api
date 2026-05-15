@@ -1,15 +1,12 @@
-name: Auto Sports Scraper
+name: Auto Sports Scraper to Hosting
 
 on:
   schedule:
-    - cron: '*/30 * * * *' # প্রতি ৩০ মিনিট পর পর অটো রান হবে
-  workflow_dispatch: # চাইলে আপনি নিজেও ম্যানুয়ালি ক্লিক করে রান করতে পারবেন
-
-permissions:
-  contents: write # গিটহাবে ফাইল পুশ করার পারমিশন
+    - cron: '*/30 * * * *' # প্রতি ৩০ মিনিট পর পর রান হবে
+  workflow_dispatch: # ম্যানুয়াল রান অপশন
 
 jobs:
-  scrape-and-update:
+  scrape-and-upload:
     runs-on: ubuntu-latest
 
     steps:
@@ -31,12 +28,6 @@ jobs:
         MY_AES_KEY: ${{ secrets.MY_AES_KEY }}
         MY_AES_IV: ${{ secrets.MY_AES_IV }}
         MY_BASE_URL: ${{ secrets.MY_BASE_URL }}
+        MY_RECEIVER_URL: ${{ secrets.MY_RECEIVER_URL }}
+        MY_HOSTING_TOKEN: ${{ secrets.MY_HOSTING_TOKEN }}
       run: python test.py
-
-    - name: Commit and Push Clean JSON File
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add decrypted_events.json
-        git diff-index --quiet HEAD || git commit -m "🤖 Auto-updated Live Match Data [Skip CI]"
-        git push
