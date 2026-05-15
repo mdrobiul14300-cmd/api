@@ -31,7 +31,7 @@ jobs:
         MY_AES_KEY: ${{ secrets.MY_AES_KEY }}
         MY_AES_IV: ${{ secrets.MY_AES_IV }}
         MY_BASE_URL: ${{ secrets.MY_BASE_URL }}
-      run: python scraper.py
+      run: python test.py
 
     - name: Commit and Push Clean JSON File
       run: |
