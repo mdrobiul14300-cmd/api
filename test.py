@@ -7,7 +7,7 @@ from Crypto.Util.Padding import unpad
 
 AES_KEY = os.environ.get("MY_AES_KEY", "").encode('utf-8')
 AES_IV = os.environ.get("MY_AES_IV", "").encode('utf-8')
-BASE_URL = os.environ.get("MY_BASE_URL", "")
+BASE_URL = os.environ.get("MY_BASE_URL", "").rstrip('/') + "/"
 TARGET_URL = f"{BASE_URL}events.txt"
 
 RECEIVER_URL = os.environ.get("MY_RECEIVER_URL", "") # e.g., https://yourdomain.com/receiver.php
