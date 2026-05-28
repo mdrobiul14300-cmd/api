@@ -1,9 +1,10 @@
 name: Auto Sports Scraper to Hosting
-
 on:
   schedule:
-    - cron: '*/30 * * * *' # প্রতি ৩০ মিনিট পর পর রান হবে
-  workflow_dispatch: # ম্যানুয়াল রান অপশন
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+  repository_dispatch:         # ← এটা যোগ করো
+    types: [manual_trigger]    # ← PHP-এর event_type এর সাথে মিলতে হবে
 
 jobs:
   scrape-and-upload:
