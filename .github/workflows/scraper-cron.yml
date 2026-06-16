@@ -3,8 +3,8 @@ on:
   schedule:
     - cron: '*/30 * * * *'
   workflow_dispatch:
-  repository_dispatch:         # ← এটা যোগ করা হলো
-    types: [manual_trigger]    # ← PHP-এর event_type এর সাথে মিলতে হবে
+  repository_dispatch:         
+    types: [manual_trigger]    
 
 jobs:
   scrape-and-upload:
@@ -31,6 +31,6 @@ jobs:
         MY_BASE_URL: ${{ secrets.MY_BASE_URL }}
         MY_RECEIVER_URL: ${{ secrets.MY_RECEIVER_URL }}
         MY_HOSTING_TOKEN: ${{ secrets.MY_HOSTING_TOKEN }}
-        # 🟢 নতুন সার্ভারের রিসিভার ইউআরএলটি গিটহাব সিক্রেটস থেকে লোড করা হলো
+        # 🟢 একদম হুবহু নিচের এই ২ লাইনের মতো করে দিন (আগে secrets. দিয়ে কানেক্ট করা ছিল না)
         MY_RECEIVER_URL_2: ${{ secrets.MY_RECEIVER_URL_2 }} 
       run: python test.py
