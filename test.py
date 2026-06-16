@@ -2,8 +2,12 @@ import os
 import json
 import base64
 import requests
+import urllib3 # 🟢 SSL ওয়ার্নিং ডিসেবল করার জন্য
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
+
+# ❌ পাইথনের ইনসিকিউর রিকোয়েস্ট ওয়ার্নিংগুলো বন্ধ করা হচ্ছে
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 AES_KEY = os.environ.get("MY_AES_KEY", "").encode('utf-8')
 AES_IV = os.environ.get("MY_AES_IV", "").encode('utf-8')
@@ -15,8 +19,9 @@ RECEIVER_URL_1 = os.environ.get("MY_RECEIVER_URL", "")
 HOSTING_AUTH_TOKEN_1 = os.environ.get("MY_HOSTING_TOKEN", "")
 
 # 🌐 হোস্টিং ২ (নতুন হোস্টসেবা হোস্টিং - sportzpulse.xyz)
-RECEIVER_URL_2 = os.environ.get("MY_RECEIVER_URL_2", "") # e.g., https://sportzpulse.xyz/receiver.php
-HOSTING_AUTH_TOKEN_2 = os.environ.get("MY_HOSTING_TOKEN_2", "") # e.g., MyNewSecretToken54321!
+RECEIVER_URL_2 = os.environ.get("MY_RECEIVER_URL_2", "") 
+# 🟢 সার্ভার ২ এর জন্যও পুরোনো সাকসেসফুল সিক্রেট কী-টি সরাসরি অ্যাসাইন করা হলো
+HOSTING_AUTH_TOKEN_2 = os.environ.get("MY_HOSTING_TOKEN", "") 
 
 f13875a = ['a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'g', 'G', 'h', 'H', 'i', 'I', 'j', 'J', 'k', 'K', 'l', 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z']
 f13876b = ['f', 'F', 'g', 'G', 'j', 'J', 'k', 'K', 'a', 'A', 'p', 'P', 'b', 'B', 'm', 'M', 'o', 'O', 'z', 'Z', 'e', 'E', 'n', 'N', 'c', 'C', 'd', 'D', 'r', 'R', 'q', 'Q', 't', 'T', 'v', 'V', 'u', 'U', 'x', 'X', 'h', 'H', 'i', 'I', 'w', 'W', 'y', 'Y', 'l', 'L', 's', 'S']
@@ -50,10 +55,12 @@ def decrypt_data(encrypted_text):
         return encrypted_text.strip()
 
 def fetch_and_decrypt_link(link_path):
-    headers = {"User-Agent": "okhttp/4.9.0"}
+    # 🟢 ক্লাউডফ্লেয়ার এড়ানোর জন্য কাস্টম ইউজার এজেন্ট
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GitHubActions/1.0"}
     full_url = f"{BASE_URL}{link_path.lstrip('/')}"
     try:
-        res = requests.get(full_url, headers=headers, timeout=10)
+        # 🟢 verify=False যোগ করা হয়েছে
+        res = requests.get(full_url, headers=headers, timeout=15, verify=False)
         if res.status_code == 200:
             decrypted_content = decrypt_data(res.text)
             if decrypted_content:
@@ -90,10 +97,12 @@ def clean_and_parse_events(raw_json_str):
 
 def run():
     print("⏳ সার্ভার থেকে মূল ইভেন্ট লিস্ট নামানো হচ্ছে...")
-    headers = {"User-Agent": "okhttp/4.9.0"}
+    # 🟢 কাস্টম ইউজার এজেন্ট যোগ করা হয়েছে
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GitHubActions/1.0"}
     
     try:
-        response = requests.get(TARGET_URL, headers=headers, timeout=20)
+        # 🟢 verify=False যোগ করা হয়েছে
+        response = requests.get(TARGET_URL, headers=headers, timeout=20, verify=False)
         response.raise_for_status()
         
         print("🔓 মূল ইভেন্ট ডাটা ডিক্রিপ্ট করা হচ্ছে...")
@@ -118,7 +127,7 @@ def run():
                     if "links" in event:
                         del event["links"]
                 
-                # 🔄 টার্গেট সার্ভার লিস্ট (লুপের মাধ্যমে দুই হোস্টিংয়েই পাঠানো হবে)
+                # 🔄 টার্গেট সার্ভার লিস্ট (লুপের মাধ্যমে দুই হোস্টিংয়েই পাঠানো হবে)
                 targets = []
                 if RECEIVER_URL_1 and HOSTING_AUTH_TOKEN_1:
                     targets.append(("সার্ভার ১", RECEIVER_URL_1, HOSTING_AUTH_TOKEN_1))
@@ -133,14 +142,18 @@ def run():
                     print(f"\n🌐 {name}-এ ফাইনাল ডাটা পাঠানো হচ্ছে...")
                     post_headers = {
                         "Content-Type": "application/json",
-                        "X-Auth-Token": token
+                        "X-Auth-Token": token,
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GitHubActions/1.0" # 🟢 ক্লাউডফ্লেয়ার বাইপাস হেডার
                     }
                     try:
-                        upload_res = requests.post(url, json=final_events, headers=post_headers, timeout=15)
+                        # 🟢 verify=False এবং ৬০ সেকেন্ড টাইমআউট হ্যান্ডলিং যোগ করা হয়েছে
+                        upload_res = requests.post(url, json=final_events, headers=post_headers, timeout=60, verify=False)
                         if upload_res.status_code == 200:
                             print(f"🚀 সফলভাবে {name}-এ ডেটা আপডেট হয়েছে!")
+                            print(f"🔹 {name} মেসেজ: {upload_res.text}")
                         else:
                             print(f"❌ {name} আপলোড ফেল করেছে। স্ট্যাটাস কোড: {upload_res.status_code}")
+                            print(f"🔹 {name} রেসপন্স: {upload_res.text}")
                     except Exception as upload_error:
                         print(f"❌ {name}-এ ডেটা পাঠানোর সময় এরর: {upload_error}")
                         
