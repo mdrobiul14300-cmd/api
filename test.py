@@ -10,8 +10,13 @@ AES_IV = os.environ.get("MY_AES_IV", "").encode('utf-8')
 BASE_URL = os.environ.get("MY_BASE_URL", "").rstrip('/') + "/"
 TARGET_URL = f"{BASE_URL}events.txt"
 
-RECEIVER_URL = os.environ.get("MY_RECEIVER_URL", "") # e.g., https://yourdomain.com/receiver.php
-HOSTING_AUTH_TOKEN = os.environ.get("MY_HOSTING_TOKEN", "") # e.g., MySuperSecretToken12345!
+# 🌐 হোস্টিং ১ (আপনার বর্তমান সোর্স/সার্ভার)
+RECEIVER_URL_1 = os.environ.get("MY_RECEIVER_URL", "") 
+HOSTING_AUTH_TOKEN_1 = os.environ.get("MY_HOSTING_TOKEN", "")
+
+# 🌐 হোস্টিং ২ (নতুন হোস্টসেবা হোস্টিং - sportzpulse.xyz)
+RECEIVER_URL_2 = os.environ.get("MY_RECEIVER_URL_2", "") # e.g., https://sportzpulse.xyz/receiver.php
+HOSTING_AUTH_TOKEN_2 = os.environ.get("MY_HOSTING_TOKEN_2", "") # e.g., MyNewSecretToken54321!
 
 f13875a = ['a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'g', 'G', 'h', 'H', 'i', 'I', 'j', 'J', 'k', 'K', 'l', 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z']
 f13876b = ['f', 'F', 'g', 'G', 'j', 'J', 'k', 'K', 'a', 'A', 'p', 'P', 'b', 'B', 'm', 'M', 'o', 'O', 'z', 'Z', 'e', 'E', 'n', 'N', 'c', 'C', 'd', 'D', 'r', 'R', 'q', 'Q', 't', 'T', 'v', 'V', 'u', 'U', 'x', 'X', 'h', 'H', 'i', 'I', 'w', 'W', 'y', 'Y', 'l', 'L', 's', 'S']
@@ -113,24 +118,32 @@ def run():
                     if "links" in event:
                         del event["links"]
                 
-                # 🔄 হোস্টিং সার্ভারে সরাসরি JSON ডেটা পোস্ট করা হচ্ছে (কোনো লোকাল ফাইল সেভ হবে না)
-                if RECEIVER_URL and HOSTING_AUTH_TOKEN:
-                    print("\n🌐 হোস্টিং সার্ভারে ফাইনাল ডাটা পাঠানো হচ্ছে...")
+                # 🔄 টার্গেট সার্ভার লিস্ট (লুপের মাধ্যমে দুই হোস্টিংয়েই পাঠানো হবে)
+                targets = []
+                if RECEIVER_URL_1 and HOSTING_AUTH_TOKEN_1:
+                    targets.append(("সার্ভার ১", RECEIVER_URL_1, HOSTING_AUTH_TOKEN_1))
+                if RECEIVER_URL_2 and HOSTING_AUTH_TOKEN_2:
+                    targets.append(("সার্ভার ২ (নতুন)", RECEIVER_URL_2, HOSTING_AUTH_TOKEN_2))
+
+                if not targets:
+                    print("\n❌ এরর: কোনো হোস্টিং ইউআরএল অথবা টোকেন সেট করা নেই!")
+                    return
+
+                for name, url, token in targets:
+                    print(f"\n🌐 {name}-এ ফাইনাল ডাটা পাঠানো হচ্ছে...")
                     post_headers = {
                         "Content-Type": "application/json",
-                        "X-Auth-Token": HOSTING_AUTH_TOKEN
+                        "X-Auth-Token": token
                     }
                     try:
-                        upload_res = requests.post(RECEIVER_URL, json=final_events, headers=post_headers, timeout=15)
+                        upload_res = requests.post(url, json=final_events, headers=post_headers, timeout=15)
                         if upload_res.status_code == 200:
-                            print("🚀 সফলভাবে হোস্টিং সার্ভারে ডেটা আপডেট হয়েছে!")
+                            print(f"🚀 সফলভাবে {name}-এ ডেটা আপডেট হয়েছে!")
                         else:
-                            print(f"❌ সার্ভার আপলোড ফেল করেছে। স্ট্যাটাস কোড: {upload_res.status_code}")
+                            print(f"❌ {name} আপলোড ফেল করেছে। স্ট্যাটাস কোড: {upload_res.status_code}")
                     except Exception as upload_error:
-                        print(f"❌ সার্ভারে ডেটা পাঠানোর সময় এরর: {upload_error}")
-                else:
-                    print("\n❌ এরর: হোস্টিং ইউআরএল অথবা টোকেন সেট করা নেই! ডেটা কোথাও পাঠানো যায়নি।")
-                
+                        print(f"❌ {name}-এ ডেটা পাঠানোর সময় এরর: {upload_error}")
+                        
     except Exception as e:
         print(f"❌ রানটাইম এরর: {e}")
 
