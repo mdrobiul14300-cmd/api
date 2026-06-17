@@ -2,35 +2,95 @@ import os
 import json
 import base64
 import requests
-import urllib3 # 🟢 SSL ওয়ার্নিং ডিসেবল করার জন্য
+import urllib3  # 🟢 SSL ওয়ার্নিং ডিসেবল করার জন্য
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
 # ❌ পাইথনের ইনসিকিউর রিকোয়েস্ট ওয়ার্নিংগুলো বন্ধ করা হচ্ছে
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+# 🔑 আপনার মেইন সিক্রেট ভ্যালুগুলো (Environment / GitHub Secrets থেকে আসবে)
 AES_KEY = os.environ.get("MY_AES_KEY", "").encode('utf-8')
 AES_IV = os.environ.get("MY_AES_IV", "").encode('utf-8')
-BASE_URL = os.environ.get("MY_BASE_URL", "").rstrip('/') + "/"
-TARGET_URL = f"{BASE_URL}events.txt"
 
-# 🌐 হোস্টিং ১ (আপনার বর্তমান সোর্স/সার্ভার)
+# 🌐 হোস্টিং ১ ও ২ এর ডিটেইলস (GitHub Secrets থেকে আসবে)
 RECEIVER_URL_1 = os.environ.get("MY_RECEIVER_URL", "") 
 HOSTING_AUTH_TOKEN_1 = os.environ.get("MY_HOSTING_TOKEN", "")
-
-# 🌐 হোস্টিং ২ (নতুন হোস্টসেবা হোস্টিং - sportzpulse.xyz)
 RECEIVER_URL_2 = os.environ.get("MY_RECEIVER_URL_2", "") 
-# 🟢 সার্ভার ২ এর জন্যও পুরোনো সাকসেসফুল সিক্রেট কী-টি সরাসরি অ্যাসাইন করা হলো
 HOSTING_AUTH_TOKEN_2 = os.environ.get("MY_HOSTING_TOKEN", "") 
 
-f13875a = ['a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'g', 'G', 'h', 'H', 'i', 'I', 'j', 'J', 'k', 'K', 'l', 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z']
-f13876b = ['f', 'F', 'g', 'G', 'j', 'J', 'k', 'K', 'a', 'A', 'p', 'P', 'b', 'B', 'm', 'M', 'o', 'O', 'z', 'Z', 'e', 'E', 'n', 'N', 'c', 'C', 'd', 'D', 'r', 'R', 'q', 'Q', 't', 'T', 'v', 'V', 'u', 'U', 'x', 'X', 'h', 'H', 'i', 'I', 'w', 'W', 'y', 'Y', 'l', 'L', 's', 'S']
+# 🔤 সিক্রেট থেকে কাস্টম ডিক্রিপশন টেবিল রিকভার করা হচ্ছে
+try:
+    f13875a = json.loads(os.environ.get("SECRET_ARRAY_A", "[]"))
+    f13876b = json.loads(os.environ.get("SECRET_ARRAY_B", "[]"))
+except Exception as table_err:
+    print(f"❌ ডিক্রিপশন টেবিল লোড করতে সমস্যা: {table_err}")
+    f13875a, f13876b = [], []
 
+# ⚙️ কাস্টম প্রতিস্থাপন টেবিল জেনারেট করা (যদি সিক্রেট ডাটা ঠিক থাকে)
 f13878d = [chr(i) for i in range(128)]
-for i in range(len(f13875a)):
-    source_char_ord = ord(f13876b[i])
-    if source_char_ord < 128:
-        f13878d[source_char_ord] = f13875a[i]
+if f13875a and f13876b and len(f13875a) == len(f13876b):
+    for i in range(len(f13875a)):
+        source_char_ord = ord(f13876b[i])
+        if source_char_ord < 128:
+            f13878d[source_char_ord] = f13875a[i]
+
+
+def fetch_firebase_remote_config():
+    """১ম этап: সম্পূর্ণ হাইড করা সিক্রেট থেকে ফায়ারবেস ডাটা এনে মেমোরিতে লোড করে"""
+    api_key = os.environ.get("FIREBASE_SECRET_API_KEY", "")
+    project_id = os.environ.get("FIREBASE_SECRET_PROJECT_ID", "")
+    app_id = os.environ.get("FIREBASE_SECRET_APP_ID", "")
+    package_name = os.environ.get("FIREBASE_SECRET_PACKAGE_NAME", "")
+    
+    if not api_key or not project_id or not app_id:
+        print("❌ ভুল: ফায়ারবেসের প্রয়োজনীয় সিক্রেট ভ্যালুগুলো এনভায়রনমেন্টে সেট করা নেই!")
+        return None
+
+    url = f"https://firebaseremoteconfig.googleapis.com/v1/projects/{project_id}/namespaces/firebase:fetch?key={api_key}"
+
+    payload = {
+        "appId": app_id,
+        "appInstanceId": "REQUIRED_BUT_CAN_BE_RANDOM_12345",
+        "countryCode": "BD",
+        "languageCode": "bn-BD",
+        "platformVersion": "33",
+        "timeZone": "Asia/Dhaka",
+        "packageName": package_name if package_name else "com.livxow.tv",
+        "sdkVersion": "23.0.1"
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 13; Build/TP1A.220624.014)"
+    }
+
+    print("🛰️ Firebase Remote Config থেকে ডাইনামিক API URL খোঁজা হচ্ছে...")
+
+    try:
+        response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=15)
+        if response.status_code == 200:
+            config_data = response.json()
+            
+            with open("remote_config_response.json", "w", encoding="utf-8") as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            
+            if "entries" in config_data:
+                entries = config_data["entries"]
+                os.environ["FIREBASE_LIVE_API_URL"] = entries.get("api_url", "")
+                os.environ["FIREBASE_NEW_TELEGRAM_URL"] = entries.get("new_telegram_url", "")
+                os.environ["FIREBASE_TELEGRAM_URL"] = entries.get("telegram_url", "")
+                os.environ["FIREBASE_WEB_URL"] = entries.get("web_url", "")
+            
+            print("💾 Firebase থেকে লাইভ URL সফলভাবে মেমোরিতে লোড করা হয়েছে।")
+            return entries.get("api_url", "")
+        else:
+            print(f"❌ ফায়ারবেস থেকে ডাটা পাওয়া যায়নি। স্ট্যাটাস: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"❌ ফায়ারবেস কানেকশন এরর: {e}")
+        return None
+
 
 def custom_substitute(raw_str):
     decrypted_chars = []
@@ -41,6 +101,7 @@ def custom_substitute(raw_str):
         else:
             decrypted_chars.append(char)
     return "".join(decrypted_chars)
+
 
 def decrypt_data(encrypted_text):
     if not encrypted_text or len(encrypted_text.strip()) == 0:
@@ -54,12 +115,11 @@ def decrypt_data(encrypted_text):
     except Exception:
         return encrypted_text.strip()
 
-def fetch_and_decrypt_link(link_path):
-    # 🟢 ক্লাউডফ্লেয়ার এড়ানোর জন্য কাস্টম ইউজার এজেন্ট
+
+def fetch_and_decrypt_link(base_url, link_path):
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GitHubActions/1.0"}
-    full_url = f"{BASE_URL}{link_path.lstrip('/')}"
+    full_url = f"{base_url}{link_path.lstrip('/')}"
     try:
-        # 🟢 verify=False যোগ করা হয়েছে
         res = requests.get(full_url, headers=headers, timeout=15, verify=False)
         if res.status_code == 200:
             decrypted_content = decrypt_data(res.text)
@@ -74,6 +134,7 @@ def fetch_and_decrypt_link(link_path):
         return []
     except Exception:
         return []
+
 
 def clean_and_parse_events(raw_json_str):
     try:
@@ -95,13 +156,23 @@ def clean_and_parse_events(raw_json_str):
         print(f"❌ ইভেন্ট পার্সিং এরর: {e}")
         return None
 
+
 def run():
+    base_url_from_firebase = os.environ.get("FIREBASE_LIVE_API_URL", "")
+    
+    if not base_url_from_firebase:
+        print("❌ মেমোরিতে কোনো BASE_URL পাওয়া যায়নি। স্ক্রিপ্ট বন্ধ করা হচ্ছে।")
+        return
+
+    BASE_URL = base_url_from_firebase.rstrip('/') + "/"
+    TARGET_URL = f"{BASE_URL}events.txt"
+    
+    print(f"🌐 লাইভ Base URL ব্যবহার করা হচ্ছে: {BASE_URL}")
     print("⏳ সার্ভার থেকে মূল ইভেন্ট লিস্ট নামানো হচ্ছে...")
-    # 🟢 কাস্টম ইউজার এজেন্ট যোগ করা হয়েছে
+    
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GitHubActions/1.0"}
     
     try:
-        # 🟢 verify=False যোগ করা হয়েছে
         response = requests.get(TARGET_URL, headers=headers, timeout=20, verify=False)
         response.raise_for_status()
         
@@ -120,14 +191,14 @@ def run():
                     event["stream_links"] = [] 
                     
                     if link_file_path and ("pro/" in link_file_path or ".txt" in link_file_path):
-                        print(f"   [{index}/{total_events}] লিঙ্ক ডিকোড হচ্ছে ➔ {event.get('teamAName')} vs {event.get('teamBName')}")
-                        real_links_json = fetch_and_decrypt_link(link_file_path)
+                        print(f"   [{index}/{total_events}] লিঙ্ক ডিকোর্ড হচ্ছে ➔ {event.get('teamAName')} vs {event.get('teamBName')}")
+                        real_links_json = fetch_and_decrypt_link(BASE_URL, link_file_path)
                         event["stream_links"] = real_links_json
                     
                     if "links" in event:
                         del event["links"]
                 
-                # 🔄 টার্গেট সার্ভার লিস্ট (লুপের মাধ্যমে দুই হোস্টিংয়েই পাঠানো হবে)
+                # 🔄 টার্গেট সার্ভার লিস্টে ডাটা পাঠানো (২টি হোস্টিংয়েই ডেটা যাবে)
                 targets = []
                 if RECEIVER_URL_1 and HOSTING_AUTH_TOKEN_1:
                     targets.append(("সার্ভার ১", RECEIVER_URL_1, HOSTING_AUTH_TOKEN_1))
@@ -143,22 +214,21 @@ def run():
                     post_headers = {
                         "Content-Type": "application/json",
                         "X-Auth-Token": token,
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GitHubActions/1.0" # 🟢 ক্লাউডফ্লেয়ার বাইপাস হেডার
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GitHubActions/1.0"
                     }
                     try:
-                        # 🟢 verify=False এবং ৬০ সেকেন্ড টাইমআউট হ্যান্ডলিং যোগ করা হয়েছে
                         upload_res = requests.post(url, json=final_events, headers=post_headers, timeout=60, verify=False)
                         if upload_res.status_code == 200:
                             print(f"🚀 সফলভাবে {name}-এ ডেটা আপডেট হয়েছে!")
-                            print(f"🔹 {name} মেসেজ: {upload_res.text}")
                         else:
                             print(f"❌ {name} আপলোড ফেল করেছে। স্ট্যাটাস কোড: {upload_res.status_code}")
-                            print(f"🔹 {name} রেসপন্স: {upload_res.text}")
                     except Exception as upload_error:
                         print(f"❌ {name}-এ ডেটা পাঠানোর সময় এরর: {upload_error}")
                         
     except Exception as e:
         print(f"❌ রানটাইম এরর: {e}")
 
+
 if __name__ == "__main__":
+    fetch_firebase_remote_config()
     run()
