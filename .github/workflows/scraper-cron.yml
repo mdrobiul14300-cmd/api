@@ -26,11 +26,22 @@ jobs:
 
     - name: Run Scraper Script
       env:
+        # 🔑 AES এবং হোস্টিং সিক্রেটস
         MY_AES_KEY: ${{ secrets.MY_AES_KEY }}
         MY_AES_IV: ${{ secrets.MY_AES_IV }}
         MY_BASE_URL: ${{ secrets.MY_BASE_URL }}
         MY_RECEIVER_URL: ${{ secrets.MY_RECEIVER_URL }}
-        MY_HOSTING_TOKEN: ${{ secrets.MY_HOSTING_TOKEN }}
-        # 🟢 একদম হুবহু নিচের এই ২ লাইনের মতো করে দিন (আগে secrets. দিয়ে কানেক্ট করা ছিল না)
         MY_RECEIVER_URL_2: ${{ secrets.MY_RECEIVER_URL_2 }} 
+        MY_HOSTING_TOKEN: ${{ secrets.MY_HOSTING_TOKEN }}
+
+        # 🛰️ নতুন ফায়ারবেস সিক্রেটস (Firebase Configs)
+        FIREBASE_SECRET_API_KEY: ${{ secrets.FIREBASE_SECRET_API_KEY }}
+        FIREBASE_SECRET_PROJECT_ID: ${{ secrets.FIREBASE_SECRET_PROJECT_ID }}
+        FIREBASE_SECRET_APP_ID: ${{ secrets.FIREBASE_SECRET_APP_ID }}
+        FIREBASE_SECRET_PACKAGE_NAME: ${{ secrets.FIREBASE_SECRET_PACKAGE_NAME }}
+
+        # 🔤 নতুন ডিক্রিপশন টেবিল সিক্রেটস (Alphabet Arrays)
+        SECRET_ARRAY_A: ${{ secrets.SECRET_ARRAY_A }}
+        SECRET_ARRAY_B: ${{ secrets.SECRET_ARRAY_B }}
+        
       run: python test.py
