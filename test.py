@@ -4,9 +4,6 @@ import base64
 import requests
 import urllib3  # 🟢 SSL ওয়ার্নিং ডিসেবল করার জন্য
 from datetime import datetime
-import pytz  # 🟢 টাইমজোন কনভার্সনের জন্য নতুন যোগ করা হয়েছে
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad
 
 # ❌ পাইথনের ইনসিকিউর রিকোয়েস্ট ওয়ার্নিংগুলো বন্ধ করা হচ্ছে
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -138,21 +135,23 @@ def fetch_and_decrypt_link(base_url, link_path):
         return []
 
 
-def convert_bd_to_utc(date_str, time_str):
-    """🟢 বাংলাদেশ সময়কে পিএইচপির সাথে ম্যাচ করানোর জন্য আন্তর্জাতিক UTC সময়ে কনভার্ট করার ফাংশন"""
+def playz_time_convert_to_utc(date_str, time_str):
+    """🟢 বাংলাদেশ সময় থেকে ৬ ঘন্টা বিয়োগ করে আন্তর্জাতিক UTC সময়ে রূপান্তরের কাস্টম ফাংশন"""
     try:
-        # ২০/০৬/২০২৬ ২০:১০:০০ ফরম্যাট পার্সিং
-        local_dt = datetime.strptime(f"{date_str} {time_str}", "%d/%m/%Y %H:%M:%S")
+        # ইনপুট ফরম্যাট: "21/06/2026" এবং "18:30:00" (অথবা "18:30")
+        time_str_clean = time_str.strip()
+        if len(time_str_clean.split(':')) == 2:
+            time_str_clean += ":00"
+            
+        # স্ট্রিং থেকে datetime অবজেক্ট তৈরি (বাংলাদেশ সময় ধরে)
+        dt_bd = datetime.strptime(f"{date_str.strip()} {time_str_clean}", "%d/%m/%Y %H:%M:%S")
         
-        # সোর্স টাইমজোন সেট করা (বাংলাদেশ)
-        bd_tz = pytz.timezone('Asia/Dhaka')
-        local_dt = bd_tz.localize(local_dt)
+        # ইউনিক্স টাইমস্ট্যাম্প বের করে ৬ ঘন্টা (২১৬০০ সেকেন্ড) বিয়োগ করা
+        utc_timestamp = dt_bd.timestamp() - 21600
+        dt_utc = datetime.fromtimestamp(utc_timestamp)
         
-        # আন্তর্জাতিক UTC সময়ে রূপান্তর
-        utc_dt = local_dt.astimezone(pytz.utc)
-        
-        # নতুন ডেট এবং টাইম স্ট্রিং রিটার্ন
-        return utc_dt.strftime("%d/%m/%Y"), utc_dt.strftime("%H:%M:%S")
+        # পিএইচপির জন্য পুনরায় কাঙ্খিত স্ট্রিং ফরম্যাটে রিটার্ন
+        return dt_utc.strftime("%d/%m/%Y"), dt_utc.strftime("%H:%M:%S")
     except Exception:
         return date_str, time_str
 
@@ -168,13 +167,13 @@ def clean_and_parse_events(raw_json_str):
                     try:
                         parsed_event = json.loads(event_data)
                         
-                        # 🟢 প্রতিটি ইভেন্টের টাইম কনভার্সন লজিক এখানে যুক্ত করা হলো
+                        # 🟢 PlayZ টাইম কনভার্সন মেকানিজম অ্যাপ্লাই করা হচ্ছে
                         if "date" in parsed_event and "time" in parsed_event:
-                            new_d, new_t = convert_bd_to_utc(parsed_event["date"], parsed_event["time"])
+                            new_d, new_t = playz_time_convert_to_utc(parsed_event["date"], parsed_event["time"])
                             parsed_event["date"] = new_d
                             parsed_event["time"] = new_t
                         if "end_date" in parsed_event and "end_time" in parsed_event:
-                            new_ed, new_et = convert_bd_to_utc(parsed_event["end_date"], parsed_event["end_time"])
+                            new_ed, new_et = playz_time_convert_to_utc(parsed_event["end_date"], parsed_event["end_time"])
                             parsed_event["end_date"] = new_ed
                             parsed_event["end_time"] = new_et
 
@@ -182,13 +181,13 @@ def clean_and_parse_events(raw_json_str):
                     except json.JSONDecodeError:
                         continue
                 else:
-                    # ডিক্ট অবজেক্ট হলে সরাসরি টাইম আপডেট
+                    # যদি ডাটা সরাসরি ডিকশনারি অবজেক্ট ফরম্যাটে থাকে
                     if "date" in event_data and "time" in event_data:
-                        new_d, new_t = convert_bd_to_utc(event_data["date"], event_data["time"])
+                        new_d, new_t = playz_time_convert_to_utc(event_data["date"], event_data["time"])
                         event_data["date"] = new_d
                         event_data["time"] = new_t
                     if "end_date" in event_data and "end_time" in event_data:
-                        new_ed, new_et = convert_bd_to_utc(event_data["end_date"], event_data["end_time"])
+                        new_ed, new_et = playz_time_convert_to_utc(event_data["end_date"], event_data["end_time"])
                         event_data["end_date"] = new_ed
                         event_data["end_time"] = new_et
                     
