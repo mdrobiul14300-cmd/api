@@ -3,6 +3,8 @@ import json
 import base64
 import requests
 import urllib3  # 🟢 SSL ওয়ার্নিং ডিসেবল করার জন্য
+from datetime import datetime
+import pytz  # 🟢 টাইমজোন কনভার্সনের জন্য নতুন যোগ করা হয়েছে
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
@@ -82,10 +84,10 @@ def fetch_firebase_remote_config():
                 os.environ["FIREBASE_TELEGRAM_URL"] = entries.get("telegram_url", "")
                 os.environ["FIREBASE_WEB_URL"] = entries.get("web_url", "")
             
-            print("💾 Firebase থেকে লাইভ URL সফলভাবে মেমোরিতে লোড করা হয়েছে।")
+            print("💾 Firebase থেকে লাইভ URL সফলভাবে মেমোরিতে লোড করা হয়েছে।")
             return entries.get("api_url", "")
         else:
-            print(f"❌ ফায়ারবেস থেকে ডাটা পাওয়া যায়নি। স্ট্যাটাস: {response.status_code}")
+            print(f"❌ ফায়ারবেস থেকে ডাটা পাওয়া যায়নি। স্ট্যাটাস: {response.status_code}")
             return None
     except Exception as e:
         print(f"❌ ফায়ারবেস কানেকশন এরর: {e}")
@@ -136,6 +138,25 @@ def fetch_and_decrypt_link(base_url, link_path):
         return []
 
 
+def convert_bd_to_utc(date_str, time_str):
+    """🟢 বাংলাদেশ সময়কে পিএইচপির সাথে ম্যাচ করানোর জন্য আন্তর্জাতিক UTC সময়ে কনভার্ট করার ফাংশন"""
+    try:
+        # ২০/০৬/২০২৬ ২০:১০:০০ ফরম্যাট পার্সিং
+        local_dt = datetime.strptime(f"{date_str} {time_str}", "%d/%m/%Y %H:%M:%S")
+        
+        # সোর্স টাইমজোন সেট করা (বাংলাদেশ)
+        bd_tz = pytz.timezone('Asia/Dhaka')
+        local_dt = bd_tz.localize(local_dt)
+        
+        # আন্তর্জাতিক UTC সময়ে রূপান্তর
+        utc_dt = local_dt.astimezone(pytz.utc)
+        
+        # নতুন ডেট এবং টাইম স্ট্রিং রিটার্ন
+        return utc_dt.strftime("%d/%m/%Y"), utc_dt.strftime("%H:%M:%S")
+    except Exception:
+        return date_str, time_str
+
+
 def clean_and_parse_events(raw_json_str):
     try:
         raw_list = json.loads(raw_json_str)
@@ -146,10 +167,31 @@ def clean_and_parse_events(raw_json_str):
                 if isinstance(event_data, str):
                     try:
                         parsed_event = json.loads(event_data)
+                        
+                        # 🟢 প্রতিটি ইভেন্টের টাইম কনভার্সন লজিক এখানে যুক্ত করা হলো
+                        if "date" in parsed_event and "time" in parsed_event:
+                            new_d, new_t = convert_bd_to_utc(parsed_event["date"], parsed_event["time"])
+                            parsed_event["date"] = new_d
+                            parsed_event["time"] = new_t
+                        if "end_date" in parsed_event and "end_time" in parsed_event:
+                            new_ed, new_et = convert_bd_to_utc(parsed_event["end_date"], parsed_event["end_time"])
+                            parsed_event["end_date"] = new_ed
+                            parsed_event["end_time"] = new_et
+
                         cleaned_list.append(parsed_event)
                     except json.JSONDecodeError:
                         continue
                 else:
+                    # ডিক্ট অবজেক্ট হলে সরাসরি টাইম আপডেট
+                    if "date" in event_data and "time" in event_data:
+                        new_d, new_t = convert_bd_to_utc(event_data["date"], event_data["time"])
+                        event_data["date"] = new_d
+                        event_data["time"] = new_t
+                    if "end_date" in event_data and "end_time" in event_data:
+                        new_ed, new_et = convert_bd_to_utc(event_data["end_date"], event_data["end_time"])
+                        event_data["end_date"] = new_ed
+                        event_data["end_time"] = new_et
+                    
                     cleaned_list.append(event_data)
         return cleaned_list
     except Exception as e:
@@ -161,7 +203,7 @@ def run():
     base_url_from_firebase = os.environ.get("FIREBASE_LIVE_API_URL", "")
     
     if not base_url_from_firebase:
-        print("❌ মেমোরিতে কোনো BASE_URL পাওয়া যায়নি। স্ক্রিপ্ট বন্ধ করা হচ্ছে।")
+        print("❌ মেমোরিতে কোনো BASE_URL পাওয়া যায়নি। স্ক্রিপ্ট বন্ধ করা হচ্ছে।")
         return
 
     BASE_URL = base_url_from_firebase.rstrip('/') + "/"
@@ -198,7 +240,7 @@ def run():
                     if "links" in event:
                         del event["links"]
                 
-                # 🔄 টার্গেট সার্ভার লিস্টে ডাটা পাঠানো (২টি হোস্টিংয়েই ডেটা যাবে)
+                # 🔄 টার্গেট সার্ভার লিস্টে ডাটা পাঠানো (২টি হোস্টিংয়েই ডেটা যাবে)
                 targets = []
                 if RECEIVER_URL_1 and HOSTING_AUTH_TOKEN_1:
                     targets.append(("সার্ভার ১", RECEIVER_URL_1, HOSTING_AUTH_TOKEN_1))
