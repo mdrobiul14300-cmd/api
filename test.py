@@ -258,43 +258,36 @@ def fetch_and_decrypt_link(base_url, link_path):
 
 
 def clean_and_parse_events(raw_json_str):
-
     try:
-
         raw_list = json.loads(raw_json_str)
-
         cleaned_list = []
-
+        
         for item in raw_list:
-
+            # ১. বাইরের অবজেক্ট থেকে আসল ID টি নেওয়া হচ্ছে
+            match_id = item.get("id")
+            
+            parsed_event = {}
             if "event" in item:
-
                 event_data = item["event"]
-
                 if isinstance(event_data, str):
-
                     try:
-
                         parsed_event = json.loads(event_data)
-
-                        cleaned_list.append(parsed_event)
-
                     except json.JSONDecodeError:
-
                         continue
+                elif isinstance(event_data, dict):
+                    parsed_event = event_data.copy()
+            
+            if match_id:
+                parsed_event["id"] = match_id
+                parsed_event["match_id"] = match_id
 
-                else:
-
-                    cleaned_list.append(event_data)
+            if parsed_event:
+                cleaned_list.append(parsed_event)
 
         return cleaned_list
-
     except Exception as e:
-
         print(f"❌ ইভেন্ট পার্সিং এরর: {e}")
-
         return None
-
 
 
 
