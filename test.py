@@ -265,9 +265,15 @@ def clean_and_parse_events(raw_json_str):
         for item in raw_list:
             if not isinstance(item, dict):
                 continue
-                
-            match_id = item.get("id") or item.get("match_id") or item.get("matchId")
             
+            raw_id = item.get("id") or item.get("match_id") or item.get("matchId")
+            match_id = None
+            if raw_id is not None:
+                try:
+                    match_id = int(raw_id)
+                except ValueError:
+                    match_id = raw_id
+
             parsed_event = {}
             event_data = item.get("event")
             
@@ -285,13 +291,13 @@ def clean_and_parse_events(raw_json_str):
             else:
                 parsed_event = item.copy()
 
-            if match_id:
+            if match_id is not None:
                 parsed_event["id"] = match_id
                 parsed_event["match_id"] = match_id
-
+                        if "links" in item and "links" not in parsed_event:
+                parsed_event["links"] = item["links"]
             if parsed_event:
                 cleaned_list.append(parsed_event)
-
         return cleaned_list
     except Exception as e:
         print(f"❌ ইভেন্ট পার্সিং এরর: {e}")
@@ -364,6 +370,7 @@ def run():
                     event["stream_links"] = [] 
 
                     
+print(f"   [{index}/{total_events}] [ID: {event.get('id')}] {event.get('teamAName')} vs {event.get('teamBName')}")
 
                     if link_file_path and ("pro/" in link_file_path or ".txt" in link_file_path):
 
