@@ -183,9 +183,6 @@ def run():
     BASE_URL = base_url_from_firebase.rstrip("/") + "/"
     TARGET_URL = f"{BASE_URL}events.txt"
 
-    print(f"🌐 লাইভ Base URL ব্যবহার করা হচ্ছে: {BASE_URL}")
-    print("⏳ সার্ভার থেকে মূল ইভেন্ট লিস্ট নামানো হচ্ছে...")
-
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GitHubActions/1.0"
     }
