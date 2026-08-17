@@ -263,20 +263,28 @@ def clean_and_parse_events(raw_json_str):
         cleaned_list = []
         
         for item in raw_list:
-            # ১. বাইরের অবজেক্ট থেকে আসল ID টি নেওয়া হচ্ছে
-            match_id = item.get("id")
+            if not isinstance(item, dict):
+                continue
+                
+            match_id = item.get("id") or item.get("match_id") or item.get("matchId")
             
             parsed_event = {}
-            if "event" in item:
-                event_data = item["event"]
-                if isinstance(event_data, str):
-                    try:
-                        parsed_event = json.loads(event_data)
-                    except json.JSONDecodeError:
-                        continue
-                elif isinstance(event_data, dict):
-                    parsed_event = event_data.copy()
+            event_data = item.get("event")
             
+            if isinstance(event_data, str):
+                try:
+                    parsed_event = json.loads(event_data)
+                except json.JSONDecodeError:
+                    decrypted_inner = decrypt_data(event_data)
+                    try:
+                        parsed_event = json.loads(decrypted_inner)
+                    except Exception:
+                        parsed_event = {}
+            elif isinstance(event_data, dict):
+                parsed_event = event_data.copy()
+            else:
+                parsed_event = item.copy()
+
             if match_id:
                 parsed_event["id"] = match_id
                 parsed_event["match_id"] = match_id
@@ -288,7 +296,6 @@ def clean_and_parse_events(raw_json_str):
     except Exception as e:
         print(f"❌ ইভেন্ট পার্সিং এরর: {e}")
         return None
-
 
 
 
