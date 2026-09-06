@@ -1,4 +1,5 @@
 name: Auto Sports Scraper to Hosting
+
 on:
   schedule:
     - cron: '*/30 * * * *'
@@ -12,12 +13,13 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
+        cache: 'pip' # ডিপেন্ডেন্সি ক্যাশ করে বিল্ড টাইম কমাবে
 
     - name: Install Dependencies
       run: |
@@ -34,13 +36,13 @@ jobs:
         MY_RECEIVER_URL_2: ${{ secrets.MY_RECEIVER_URL_2 }} 
         MY_HOSTING_TOKEN: ${{ secrets.MY_HOSTING_TOKEN }}
 
-        # 🛰️ নতুন ফায়ারবেস সিক্রেটস (Firebase Configs)
+        # 🛰️ ফায়ারবেস সিক্রেটস
         FIREBASE_SECRET_API_KEY: ${{ secrets.FIREBASE_SECRET_API_KEY }}
         FIREBASE_SECRET_PROJECT_ID: ${{ secrets.FIREBASE_SECRET_PROJECT_ID }}
         FIREBASE_SECRET_APP_ID: ${{ secrets.FIREBASE_SECRET_APP_ID }}
         FIREBASE_SECRET_PACKAGE_NAME: ${{ secrets.FIREBASE_SECRET_PACKAGE_NAME }}
 
-        # 🔤 নতুন ডিক্রিপশন টেবিল সিক্রেটস (Alphabet Arrays)
+        # 🔤 ডিক্রিপশন টেবিল সিক্রেটস
         SECRET_ARRAY_A: ${{ secrets.SECRET_ARRAY_A }}
         SECRET_ARRAY_B: ${{ secrets.SECRET_ARRAY_B }}
         
